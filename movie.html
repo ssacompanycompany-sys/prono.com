@@ -1,42 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>Watch Movie</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="movie-container">Loading...</div>
 
-<div id="movie-container"></div>
+  <!-- Firebase (v9 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
 <script>
+  // TODO: Replace with your Firebase config
+  const firebaseConfig = {
+    apiKey: "REPLACE_ME",
+    authDomain: "REPLACE_ME",
+    projectId: "REPLACE_ME",
+    storageBucket: "REPLACE_ME",
+    messagingSenderId: "REPLACE_ME",
+    appId: "REPLACE_ME"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
   async function loadMovie() {
-    const urlParams = new URLSearchParams(location.search);
-    const movieId = urlParams.get("id");
-
-    const data = await fetch("movies.json");
-    const movies = await data.json();
-
-    const movie = movies.find(m => m.id == movieId);
-
-    if (!movie) {
-      document.body.innerHTML = "<h1>Movie not found</h1>";
+    const params = new URLSearchParams(location.search);
+    const movieId = params.get('id');
+    if (!movieId) {
+      document.getElementById('movie-container').innerHTML = '<h1>No movie selected</h1>';
       return;
     }
-
-    if (movie.is_paid) {
-      document.body.innerHTML = "<h1>This movie is premium.</h1>";
-      return;
+    try {
+      const doc = await db.collection('movies').doc(movieId).get();
+      if (!doc.exists) {
+        document.getElementById('movie-container').innerHTML = '<h1>Movie not found</h1>';
+        return;
+      }
+      const movie = doc.data();
+      if (movie.is_paid) {
+        document.getElementById('movie-container').innerHTML = '<h1>This movie is premium. Please log in and pay to watch.</h1>';
+        return;
+      }
+      document.getElementById('movie-container').innerHTML = `
+        <h1>${movie.title}</h1>
+        <video width="100%" controls>
+          <source src="${movie.video_url}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      `;
+    } catch (e) {
+      console.error(e);
+      document.getElementById('movie-container').innerHTML = '<p>Error loading movie. Check console for details.</p>';
     }
-
-    document.getElementById("movie-container").innerHTML = `
-      <h1>${movie.title}</h1>
-      <video width="100%" controls>
-        <source src="${movie.video_url}" type="video/mp4">
-      </video>
-    `;
   }
-
   loadMovie();
 </script>
-
 </body>
 </html>

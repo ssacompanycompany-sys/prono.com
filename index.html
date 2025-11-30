@@ -1,29 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>Movie Site</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Movie Website</h1>
-  <div id="movie-list"></div>
+  <div id="movie-list">Loading movies...</div>
+
+  <!-- Firebase (v9 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
 <script>
-  async function loadMovies() {
-    const data = await fetch("movies.json");
-    const movies = await data.json();
-    const container = document.getElementById("movie-list");
+  // TODO: Replace with your Firebase config
+  const firebaseConfig = {
+    apiKey: "REPLACE_ME",
+    authDomain: "REPLACE_ME",
+    projectId: "REPLACE_ME",
+    storageBucket: "REPLACE_ME",
+    messagingSenderId: "REPLACE_ME",
+    appId: "REPLACE_ME"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-    movies.forEach(movie => {
-      container.innerHTML += `
-        <div class="movie">
-          <img src="${movie.thumbnail}">
+  async function loadMovies() {
+    const container = document.getElementById("movie-list");
+    container.innerHTML = '';
+    try {
+      const snapshot = await db.collection('movies').orderBy('createdAt', 'desc').get();
+      if (snapshot.empty) {
+        container.innerHTML = '<p>No movies found yet.</p>';
+        return;
+      }
+      const movies = [];
+      snapshot.forEach(doc => movies.push({ id: doc.id, ...doc.data() }));
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      movies.forEach(movie => {
+        const div = document.createElement('div');
+        div.className = 'movie';
+        div.innerHTML = `
+          <img src="${movie.thumbnail || 'https://via.placeholder.com/300x450'}" alt="${movie.title}">
           <h3>${movie.title}</h3>
           <a href="movie.html?id=${movie.id}">Watch</a>
-        </div>
-      `;
-    });
+        `;
+        grid.appendChild(div);
+      });
+      container.appendChild(grid);
+    } catch (e) {
+      console.error(e);
+      container.innerHTML = '<p>Error loading movies. Check console for details.</p>';
+    }
   }
+
   loadMovies();
 </script>
 </body>

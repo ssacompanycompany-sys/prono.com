@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin - Manage Movies</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Admin Panel</h1>
+
+  <div id="auth">
+    <h3>Admin Login</h3>
+    <input id="email" placeholder="Email"><br>
+    <input id="password" type="password" placeholder="Password"><br>
+    <button id="btn-login">Login / Register</button>
+    <button id="btn-logout" style="display:none">Logout</button>
+    <p id="auth-msg"></p>
+  </div>
+
+  <div id="admin-ui" style="display:none">
+    <h3>Add / Edit Movie</h3>
+    <input id="m-title" placeholder="Title"><br>
+    <input id="m-thumb" placeholder="Thumbnail URL"><br>
+    <input id="m-video" placeholder="Video URL (mp4 or link)"><br>
+    <label><input type="checkbox" id="m-paid"> Is Paid</label><br>
+    <button id="btn-save">Save Movie</button>
+
+    <h3>Existing Movies</h3>
+    <div id="movies-list">Loading...</div>
+  </div>
+
+  <!-- Firebase (v9 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+<script>
+  // TODO: Replace with your Firebase config
+  const firebaseConfig = {
+    apiKey: "REPLACE_ME",
+    authDomain: "REPLACE_ME",
+    projectId: "REPLACE_ME",
+    storageBucket: "REPLACE_ME",
+    messagingSenderId: "REPLACE_ME",
+    appId: "REPLACE_ME"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // ------ Simple admin gating -------
+  // Recommended: set custom claim 'admin': true for admin accounts (see instructions).
+  // For quick testing you can add allowed emails here:
+  const allowedAdminEmails = ["you@example.com"]; // <-- replace with your admin email(s)
+
+  const btnLogin = document.getElementById('btn-login');
+  const btnLogout = document.getElementById('btn-logout');
+  const authMsg = document.getElementById('auth-msg');
+  const adminUI = document.getElementById('admin-ui');
+
+  auth.onAuthStateChanged(async user => {
+    if (user) {
+      const token = await user.getIdTokenResult();
+      const isAdminClaim = token.claims && token.claims.admin;
+      const isAllowedEmail = allowedAdminEmails.includes(user.email);
+      if (isAdminClaim || isAllowedEmail) {
+        authMsg.textContent = 'Logged in as admin: ' + user.email;
+        btnLogout.style.display = 'inline';
+        btnLogin.style.display = 'none';
+        adminUI.style.display = 'block';
+        loadExistingMovies();
+      } else {
+        authMsg.textContent = 'Signed in but not an admin. Contact project owner.';
+        adminUI.style.display = 'none';
+        btnLogout.style.display = 'inline';
+        btnLogin.style.display = 'none';
+      }
+    } else {
+      authMsg.textContent = 'Not logged in';
+      adminUI.style.display = 'none';
+      btnLogout.style.display = 'none';
+      btnLogin.style.display = 'inline';
+      document.getElementById('movies-list').innerHTML = '';
+    }
+  });
+
+  btnLogin.onclick = async () => {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    if (!email || !password) { authMsg.textContent = 'Enter email and password'; return; }
+    try {
+      // Try sign in, if fails create account
+      await auth.signInWithEmailAndPassword(email, password);
+    } catch (e) {
+      try {
+        await auth.createUserWithEmailAndPassword(email, password);
+        authMsg.textContent = 'Account created. Please log in again.';
+      } catch (err) {
+        authMsg.textContent = 'Auth error: ' + err.message;
+      }
+    }
+  };
+
+  btnLogout.onclick = () => auth.signOut();
+
+  document.getElementById('btn-save').onclick = async () => {
+    const title = document.getElementById('m-title').value.trim();
+    const thumb = document.getElementById('m-thumb').value.trim();
+    const video = document.getElementById('m-video').value.trim();
+    const isPaid = document.getElementById('m-paid').checked;
+    if (!title || !video) { alert('Title and video URL are required'); return; }
+    try {
+      await db.collection('movies').add({
+        title: title,
+        thumbnail: thumb,
+        video_url: video,
+        is_paid: isPaid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById('m-title').value='';
+      document.getElementById('m-thumb').value='';
+      document.getElementById('m-video').value='';
+      document.getElementById('m-paid').checked=false;
+      loadExistingMovies();
+      alert('Movie saved');
+    } catch (e) {
+      console.error(e);
+      alert('Error saving movie: ' + e.message);
+    }
+  };
+
+  async function loadExistingMovies() {
+    const list = document.getElementById('movies-list');
+    list.innerHTML = 'Loading...';
+    try {
+      const snapshot = await db.collection('movies').orderBy('createdAt','desc').get();
+      if (snapshot.empty) { list.innerHTML = '<p>No movies yet.</p>'; return; }
+      const ul = document.createElement('ul');
+      snapshot.forEach(doc => {
+        const m = doc.data();
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${m.title}</strong> - ${m.is_paid ? 'Paid' : 'Free'} 
+          <button data-id="${doc.id}" class="btn-del">Delete</button>`;
+        ul.appendChild(li);
+      });
+      list.innerHTML = '';
+      list.appendChild(ul);
+
+      document.querySelectorAll('.btn-del').forEach(btn => {
+        btn.onclick = async (e) => {
+          const id = e.target.getAttribute('data-id');
+          if (!confirm('Delete this movie?')) return;
+          await db.collection('movies').doc(id).delete();
+          loadExistingMovies();
+        };
+      });
+    } catch (e) {
+      console.error(e);
+      list.innerHTML = '<p>Error loading movies</p>';
+    }
+  }
+</script>
+</body>
+</html>
