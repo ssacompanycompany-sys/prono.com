@@ -1,0 +1,4 @@
+body { font-family: Arial; padding: 20px; }
+#movie-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.movie { border: 1px solid #ccc; padding: 10px; border-radius: 8px; }
+.movie img { width: 100%; border-radius: 8px; }

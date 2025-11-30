@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Watch Movie</title>
+</head>
+<body>
+
+<div id="movie-container"></div>
+
+<script>
+  async function loadMovie() {
+    const urlParams = new URLSearchParams(location.search);
+    const movieId = urlParams.get("id");
+
+    const data = await fetch("movies.json");
+    const movies = await data.json();
+
+    const movie = movies.find(m => m.id == movieId);
+
+    if (!movie) {
+      document.body.innerHTML = "<h1>Movie not found</h1>";
+      return;
+    }
+
+    if (movie.is_paid) {
+      document.body.innerHTML = "<h1>This movie is premium.</h1>";
+      return;
+    }
+
+    document.getElementById("movie-container").innerHTML = `
+      <h1>${movie.title}</h1>
+      <video width="100%" controls>
+        <source src="${movie.video_url}" type="video/mp4">
+      </video>
+    `;
+  }
+
+  loadMovie();
+</script>
+
+</body>
+</html>

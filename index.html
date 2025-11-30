@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Movie Site</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Movie Website</h1>
+  <div id="movie-list"></div>
+
+<script>
+  async function loadMovies() {
+    const data = await fetch("movies.json");
+    const movies = await data.json();
+    const container = document.getElementById("movie-list");
+
+    movies.forEach(movie => {
+      container.innerHTML += `
+        <div class="movie">
+          <img src="${movie.thumbnail}">
+          <h3>${movie.title}</h3>
+          <a href="movie.html?id=${movie.id}">Watch</a>
+        </div>
+      `;
+    });
+  }
+  loadMovies();
+</script>
+</body>
+</html>

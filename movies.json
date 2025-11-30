@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "Movie 1",
+    "thumbnail": "https://via.placeholder.com/300x450",
+    "video_url": "https://example.com/movie1.mp4",
+    "is_paid": false
+  },
+  {
+    "id": 2,
+    "title": "Premium Movie",
+    "thumbnail": "https://via.placeholder.com/300x450",
+    "video_url": "https://example.com/premium.mp4",
+    "is_paid": true
+  }
+]
